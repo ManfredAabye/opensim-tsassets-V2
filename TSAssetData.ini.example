@@ -1,0 +1,112 @@
+; ============================================================
+; MYSQL Robust Konfiguration Robust.ini Robust.HG.ini
+; ============================================================
+
+; TSAssetData.ini.example
+; TSAsset Konfigurationsblöcke – MySQL und SQLite
+; Relevante Blöcke in opensim/bin/Robust.HG.ini übernehmen
+;
+; Provider:
+;   MySQL  -> OpenSim.Data.MySQL.dll:MySQLtsAssetData
+;   SQLite -> OpenSim.Data.SQLite.dll:SQLitetsAssetData
+;
+; In beiden Fällen wird LocalServiceModule auf TSAssetConnector gesetzt.
+
+; ============================================================
+; MYSQL KONFIGURATION
+; ============================================================
+
+[AssetService]
+	LocalServiceModule = "OpenSim.Services.AssetService.dll:TSAssetConnector"
+	StorageProvider = "OpenSim.Data.MySQL.dll:MySQLAssetData"
+	ConnectionString = "Data Source=localhost;Database=robust;User ID=opensim;Password=opensim123;Old Guids=true;SslMode=None;"
+	FallbackService = "OpenSim.Services.AssetService.dll:AssetService"
+
+	DefaultAssetLoader = "OpenSim.Framework.AssetLoader.Filesystem.dll"
+	AssetLoaderArgs = "./assets/AssetSets.xml"
+	AllowRemoteDelete = false
+	AllowRemoteDeleteAllTypes = false
+
+[TSAssetService]
+	Enabled = true
+
+	StorageProvider = "OpenSim.Data.MySQL.dll:MySQLtsAssetData"
+	ConnectionString = "Data Source=localhost;Database=robust;User ID=opensim;Password=opensim123;Old Guids=true;SslMode=None;"
+
+	; Nur angegebene Typen in TSAsset-Tabellen speichern (leer = alle Typen)
+	; Bevorzugt Aliasnamen (lesbarer), Zahlen bleiben kompatibel.
+	; Beispiel: TSAssetType = "INVENTORY_TEXTURE,INVENTORY_MESH,INVENTORY_MATERIAL,INVENTORY_MATERIALPBR"
+	; Legacy-kompatibel: numerische Typen aus Altbeständen werden weiterhin akzeptiert.
+	TSAssetType = ""
+
+	EnableFallbackAutoMigration = true
+	EnableFallbackAutoDelete = false
+	MigrationCheckIntervalSeconds = 60
+	MigrationLowTrafficMaxRequests = 3
+	MigrationBatchSize = 25
+	MigrationQueueMax = 50000
+
+	; Optionales Typ-Routing: unterschiedliche Datenbanken pro Asset-Typ
+	; Typen ohne eigenen Eintrag nutzen die Default-ConnectionString oben.
+	; Bevorzugt Aliasnamen als Schlüssel, numerische Schlüssel bleiben kompatibel.
+	;
+	; Beispiel für getrennte Datenbanken:
+	; AssetDatabase_INVENTORY_TEXTURE    = "Data Source=localhost;Database=robust_textures;User ID=opensim;Password=opensim123;Old Guids=true;SslMode=None;"
+	; AssetDatabase_INVENTORY_MESH       = "Data Source=localhost;Database=robust_mesh;User ID=opensim;Password=opensim123;Old Guids=true;SslMode=None;"
+	; AssetDatabase_INVENTORY_MATERIAL   = "Data Source=localhost;Database=robust_materials;User ID=opensim;Password=opensim123;Old Guids=true;SslMode=None;"
+	; AssetDatabase_INVENTORY_SOUND      = "Data Source=localhost;Database=robust_audio;User ID=opensim;Password=opensim123;Old Guids=true;SslMode=None;"
+	; Legacy-kompatibel: numerische AssetDatabase-Schlüssel aus Altbeständen werden weiterhin akzeptiert.
+	;
+	; Einheitliche Datenbank für alle Typen (kein Routing, Default greift):
+	; Kein AssetDatabase_X erforderlich – ConnectionString oben wird verwendet.
+
+; Rollback: LocalServiceModule in [AssetService] auf AssetService zurücksetzen
+; EnableFallbackAutoDelete erst nach Validierung und Backup aktivieren
+
+; ============================================================
+; SQLITE Konfiguration OpenSim.ini
+; ============================================================
+
+[AssetService]
+	LocalServiceModule = "OpenSim.Services.AssetService.dll:TSAssetConnector"
+	StorageProvider = "OpenSim.Data.SQLite.dll:SQLiteAssetData"
+	ConnectionString = "URI=file:Asset.db"
+	FallbackService = "OpenSim.Services.AssetService.dll:AssetService"
+
+	DefaultAssetLoader = "OpenSim.Framework.AssetLoader.Filesystem.dll"
+	AssetLoaderArgs = "./assets/AssetSets.xml"
+	AllowRemoteDelete = false
+	AllowRemoteDeleteAllTypes = false
+
+[TSAssetService]
+	Enabled = true
+
+	StorageProvider = "OpenSim.Data.SQLite.dll:SQLitetsAssetData"
+	ConnectionString = "URI=file:Asset.db"
+
+	; Nur angegebene Typen in TSAsset-Dateien speichern (leer = alle Typen)
+	; Bevorzugt Aliasnamen (lesbarer), Zahlen bleiben kompatibel.
+	; Beispiel: TSAssetType = "INVENTORY_TEXTURE,INVENTORY_MESH,INVENTORY_MATERIAL"
+	; Legacy-kompatibel: numerische Typen aus Altbeständen werden weiterhin akzeptiert.
+	TSAssetType = ""
+
+	EnableFallbackAutoMigration = true
+	EnableFallbackAutoDelete = false
+	MigrationCheckIntervalSeconds = 60
+	MigrationLowTrafficMaxRequests = 3
+	MigrationBatchSize = 25
+	MigrationQueueMax = 50000
+
+	; Hinweis SQLite:
+	; SQLitetsAssetData teilt Assets nach Typ auf eigene Dateien auf:
+	;   Asset.db            -> Hauptdatei (tsassets_index, Legacy-assets-Tabelle)
+	;   Asset.Material.db   -> Material
+	;   Asset.Texture.db    -> Texture
+	;   Asset.Mesh.db       -> Mesh
+	;   Asset.Type_77.db    -> unbekannter Typ 77
+	; Damit wird das Wachstum auf mehrere Dateien verteilt.
+	; Legacy-kompatibel werden alte numerische Shards (Asset.assets_[TYPE-ID].db) weiter gelesen.
+	; AssetDatabase_X Routing wird bei SQLite nicht unterstützt.
+
+; Rollback: LocalServiceModule in [AssetService] auf AssetService zurücksetzen
+; EnableFallbackAutoDelete erst nach Validierung und Backup aktivieren
